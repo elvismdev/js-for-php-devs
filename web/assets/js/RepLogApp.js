@@ -34,12 +34,11 @@
         loadRepLogs: function() {
             var self = this;
             $.ajax({
-                url: Routing.generate('rep_log_list'),
-                success: function(data) {
-                    $.each(data.items, function(key, repLog) {
-                        self._addRow(repLog);
-                    });
-                }
+                url: Routing.generate('rep_log_list')
+            }).then(function(data) {
+                $.each(data.items, function(key, repLog) {
+                    self._addRow(repLog);
+                });
             });
         },
 
@@ -64,14 +63,13 @@
             var self = this;
             $.ajax({
                 url: deleteUrl,
-                method: 'DELETE',
-                success: function() {
-                    $row.fadeOut('normal', function() {
-                        $(this).remove();
-                        self.updateTotalWeightLifted();
-                    });
-                }
-            })
+                method: 'DELETE'
+            }).then(function() {
+                $row.fadeOut('normal', function() {
+                    $(this).remove();
+                    self.updateTotalWeightLifted();
+                });
+            });
         },
 
         handleRowClick: function() {
@@ -87,18 +85,29 @@
                 formData[fieldData.name] = fieldData.value;  
             });
             var self = this;
-            $.ajax({
-                url: $form.data('url'),
+
+            this._saveRepLog(formData)
+            .then(function(data) {
+                self._clearForm();
+                self._addRow(data);
+            }).catch(function(jqXHR) {
+                var errorData = JSON.parse(jqXHR.responseText);
+                self._mapErrorsToForm(errorData.errors);
+            });
+        },
+
+        _saveRepLog: function(data) {
+            return $.ajax({
+                url: Routing.generate('rep_log_new'),
                 method: 'POST',
-                data: JSON.stringify(formData),
-                success: function(data) {
-                    self._clearForm();
-                    self._addRow(data);
-                },
-                error: function(jqXHR) {
-                    var errorData = JSON.parse(jqXHR.responseText);
-                    self._mapErrorsToForm(errorData.errors);
-                }
+                data: JSON.stringify(data)
+            }).then(function(data, textStatus, jqXHR) {
+                $.ajax({
+                    url: jqXHR.getResponseHeader('Location')                    
+                }).then(function(data) {
+                    console.log('now we are really DOne');
+                    console.log(data);
+                });
             });
         },
 
@@ -146,19 +155,19 @@
 
     });
 
-    var Helper = function($wrapper) {
-        this.$wrapper = $wrapper;
-    };
+var Helper = function($wrapper) {
+    this.$wrapper = $wrapper;
+};
 
-    $.extend(Helper.prototype, {
-        calculateTotalWeight: function() {
-            var totalWeight = 0;
-            this.$wrapper.find('tbody tr').each(function() {
-                totalWeight += $(this).data('weight');
-            });
+$.extend(Helper.prototype, {
+    calculateTotalWeight: function() {
+        var totalWeight = 0;
+        this.$wrapper.find('tbody tr').each(function() {
+            totalWeight += $(this).data('weight');
+        });
 
-            return totalWeight;
-        }
-    });
+        return totalWeight;
+    }
+});
 
 })(window, jQuery, Routing);
