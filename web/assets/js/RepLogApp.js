@@ -1,5 +1,5 @@
 'use strict';
-(function(window, $, Routing) {
+(function(window, $, Routing, swal) {
     window.RepLogApp = function($wrapper) {
         this.$wrapper = $wrapper;
         this.helper = new Helper($wrapper);
@@ -52,6 +52,25 @@
             e.preventDefault();
 
             var $link = $(e.currentTarget);
+            var self = this;
+            swal({
+                title: 'Delete this log?',
+                html: 'What? Did you not actually lift this?',
+                showCancelButton: true,
+                showLoaderOnConfirm: true,
+                preConfirm: function() {
+                    return self._deleteRepLog($link);
+                }
+            }).then((result) => {
+                if (result.value === true) {
+
+                } else if (result.dismiss === 'cancel') {
+                    // console.log('canceled');
+                }
+            })
+        },
+
+        _deleteRepLog: function($link) {
             $link.addClass('text-danger');
             $link.find('.fa')
             .removeClass('fa-trash')
@@ -61,7 +80,7 @@
             var deleteUrl = $link.data('url');
             var $row = $link.closest('tr');
             var self = this;
-            $.ajax({
+            return $.ajax({
                 url: deleteUrl,
                 method: 'DELETE'
             }).then(function() {
@@ -90,25 +109,30 @@
             .then(function(data) {
                 self._clearForm();
                 self._addRow(data);
-            }).catch(function(jqXHR) {
-                var errorData = JSON.parse(jqXHR.responseText);
+            }).catch(function(errorData) {
                 self._mapErrorsToForm(errorData.errors);
             });
         },
 
         _saveRepLog: function(data) {
-            return $.ajax({
-                url: Routing.generate('rep_log_new'),
-                method: 'POST',
-                data: JSON.stringify(data)
-            }).then(function(data, textStatus, jqXHR) {
+            return new Promise(function(resolve, reject) {
                 $.ajax({
-                    url: jqXHR.getResponseHeader('Location')                    
-                }).then(function(data) {
-                    console.log('now we are really DOne');
-                    console.log(data);
+                    url: Routing.generate('rep_log_new'),
+                    method: 'POST',
+                    data: JSON.stringify(data)
+                }).then(function(data, textStatus, jqXHR) {
+                    $.ajax({
+                        url: jqXHR.getResponseHeader('Location')                    
+                    }).then(function(data) {
+                        // we're finally done
+                        resolve(data);
+                    });
+                }).catch(function(jqXHR) {
+                    var errorData = JSON.parse(jqXHR.responseText);
+                    reject(errorData);
                 });
             });
+
         },
 
         _mapErrorsToForm: function(errorData) {
@@ -170,4 +194,4 @@ $.extend(Helper.prototype, {
     }
 });
 
-})(window, jQuery, Routing);
+})(window, jQuery, Routing, swal);
